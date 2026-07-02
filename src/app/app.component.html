@@ -1,26 +1,30 @@
 <main class="container">
-  <h1>Snip</h1>
-  <p class="subtitle">Tiny URL shortener frontend</p>
+  <section class="hero">
+    <h1 class="hero-title">Shorten links without the noise.</h1>
+    <p class="hero-subtitle">Drop a URL, get a short code, track hits instantly.</p>
 
-  <form class="shorten-form" (ngSubmit)="shortenUrl()">
-    <label for="url">URL</label>
-    <input
-      id="url"
-      name="url"
-      type="url"
-      placeholder="https://example.com"
-      [ngModel]="urlInput()"
-      (ngModelChange)="urlInput.set($event)"
-      [disabled]="submitting()"
-      required
-    />
-    <button type="submit" [disabled]="!canSubmit()">
-      {{ submitting() ? 'Shortening...' : 'Shorten' }}
-    </button>
-  </form>
+    <form class="shorten-form" (ngSubmit)="shortenUrl()">
+      <label class="sr-only" for="url">URL</label>
+      <div class="prompt-shell">
+        <input
+          id="url"
+          name="url"
+          type="url"
+          placeholder="Paste a URL like https://example.com"
+          [ngModel]="urlInput()"
+          (ngModelChange)="urlInput.set($event)"
+          [disabled]="submitting()"
+          required
+        />
+        <button type="submit" [disabled]="!canSubmit()">
+          {{ submitting() ? 'Shortening...' : 'Shorten' }}
+        </button>
+      </div>
+    </form>
+  </section>
 
   @if (createdLink()) {
-    <p class="success">
+    <p class="notice notice-success">
       Created:
       <a [href]="createdLink()!.shortUrl" target="_blank" rel="noreferrer">
         {{ createdLink()!.shortUrl }}
@@ -29,13 +33,13 @@
   }
 
   @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
+    <p class="notice notice-error">{{ errorMessage() }}</p>
   }
 
-  <section class="list-section">
+  <section class="list-section card">
     <div class="list-header">
-      <h2>All links</h2>
-      <button type="button" (click)="loadLinks()" [disabled]="loading()">
+      <h2 class="section-title">All links</h2>
+      <button class="ghost-button" type="button" (click)="loadLinks()" [disabled]="loading()">
         {{ loading() ? 'Loading...' : 'Refresh' }}
       </button>
     </div>
@@ -45,7 +49,7 @@
     }
 
     @if (links().length > 0) {
-      <table>
+      <table class="links-table">
         <thead>
           <tr>
             <th>Code</th>
