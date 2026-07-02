@@ -1,41 +1,32 @@
-const fs = require("node:fs");
-const path = require("node:path");
+import { access, stat } from "node:fs/promises";
+import path from "node:path";
 
-const PORT = Number(process.env.PORT || 3000);
-const PUBLIC_DIR = process.env.PUBLIC_DIR;
-
-function getBaseUrl() {
-  if (process.env.BASE_URL) {
-    return process.env.BASE_URL.replace(/\/$/, "");
-  }
-
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`.replace(/\/$/, "");
-  }
-
-  return `http://localhost:${PORT}`;
-}
-
-const BASE_URL = getBaseUrl();
-
-const links = new Map();
+const store = new Map();
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-function randomBase62(length) {
-  let out = "";
-  for (let i = 0; i < length; i += 1) {
-    const idx = Math.floor(Math.random() * BASE62.length);
-    out += BASE62[idx];
-  }
-  return out;
+const PORT = Number.parseInt(process.env.PORT || "3000", 10);
+const RAILWAY_PUBLIC_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN;
+const BASE_URL =
+  process.env.BASE_URL ||
+  (RAILWAY_PUBLIC_DOMAIN ? `https://${RAILWAY_PUBLIC_DOMAIN}` : `http://localhost:${PORT}`);
+const PUBLIC_DIR = process.env.PUBLIC_DIR ? path.resolve(process.env.PUBLIC_DIR) : null;
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
 }
 
-function makeUniqueCode() {
-  let code;
-  do {
-    code = randomBase62(6);
-  } while (links.has(code));
-  return code;
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders(),
+    },
+  });
 }
 
 function isValidHttpUrl(value) {
@@ -47,146 +38,154 @@ function isValidHttpUrl(value) {
   }
 }
 
-function jsonResponse(body, status = 200, extraHeaders = {}) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...extraHeaders,
-    },
+function randomBase62Code(length = 6) {
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+
+  let code = "";
+  for (const byte of bytes) {
+    code += BASE62[byte % BASE62.length];
+  }
+  return code;
+}
+
+function generateUniqueCode() {
+  let code;
+  do {
+    code = randomBase62Code(6);
+  } while (store.has(code));
+  return code;
+}
+
+function buildLinkResponse(link) {
+  return {
+    code: link.code,
+    url: link.url,
+    shortUrl: `${BASE_URL}/${link.code}`,
+    hits: link.hits,
+    createdAt: link.createdAt,
+  };
+}
+
+async function fileExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safePublicFilePath(urlPathname) {
+  if (!PUBLIC_DIR) {
+    return null;
+  }
+
+  const requestedPath = urlPathname === "/" ? "/index.html" : urlPathname;
+  const normalized = path.normalize(requestedPath).replace(/^([.]{2}[/\\])+/, "");
+  const fullPath = path.resolve(PUBLIC_DIR, `.${normalized}`);
+
+  if (!fullPath.startsWith(PUBLIC_DIR)) {
+    return null;
+  }
+
+  return fullPath;
+}
+
+async function serveStaticIfExists(urlPathname) {
+  const filePath = safePublicFilePath(urlPathname);
+  if (!filePath) {
+    return null;
+  }
+
+  if (!(await fileExists(filePath))) {
+    return null;
+  }
+
+  const fileStat = await stat(filePath);
+  if (!fileStat.isFile()) {
+    return null;
+  }
+
+  return new Response(Bun.file(filePath), {
+    status: 200,
+    headers: corsHeaders(),
   });
 }
 
-function withCorsHeaders(headers = {}) {
-  return {
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type",
-    ...headers,
-  };
-}
-
-function toPayload(record) {
-  return {
-    code: record.code,
-    url: record.url,
-    shortUrl: record.shortUrl,
-    hits: record.hits,
-    createdAt: record.createdAt,
-  };
-}
-
-function safePathFromUrlPathname(urlPathname) {
-  if (!PUBLIC_DIR) return null;
-
-  const publicRoot = path.resolve(PUBLIC_DIR);
-  const decodedPath = decodeURIComponent(urlPathname);
-  const relativePath = decodedPath === "/" ? "index.html" : decodedPath.replace(/^\/+/, "");
-  const resolved = path.resolve(publicRoot, relativePath);
-
-  if (!resolved.startsWith(publicRoot + path.sep) && resolved !== publicRoot) {
-    return null;
-  }
-
-  if (!fs.existsSync(resolved)) {
-    return null;
-  }
-
-  if (fs.statSync(resolved).isDirectory()) {
-    const indexPath = path.join(resolved, "index.html");
-    if (fs.existsSync(indexPath) && fs.statSync(indexPath).isFile()) {
-      return indexPath;
-    }
-    return null;
-  }
-
-  return resolved;
-}
-
-function contentTypeFor(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".html") return "text/html; charset=utf-8";
-  if (ext === ".css") return "text/css; charset=utf-8";
-  if (ext === ".js") return "application/javascript; charset=utf-8";
-  if (ext === ".json") return "application/json; charset=utf-8";
-  if (ext === ".svg") return "image/svg+xml";
-  if (ext === ".png") return "image/png";
-  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
-  if (ext === ".gif") return "image/gif";
-  if (ext === ".webp") return "image/webp";
-  if (ext === ".txt") return "text/plain; charset=utf-8";
-  return "application/octet-stream";
-}
-
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
-  async fetch(req) {
-    const url = new URL(req.url);
-    const method = req.method.toUpperCase();
+  async fetch(request) {
+    const { pathname } = new URL(request.url);
 
-    if (method === "OPTIONS") {
+    if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: withCorsHeaders(),
+        headers: corsHeaders(),
       });
     }
 
-    if (method === "POST" && url.pathname === "/api/links") {
-      let body;
+    if (pathname === "/api/links" && request.method === "POST") {
+      let payload;
       try {
-        body = await req.json();
+        payload = await request.json();
       } catch {
-        return jsonResponse({ error: "Invalid JSON" }, 400, withCorsHeaders());
+        return jsonResponse({ error: "Invalid JSON" }, 400);
       }
 
-      if (!body || typeof body.url !== "string" || !isValidHttpUrl(body.url)) {
-        return jsonResponse({ error: "URL must be a valid http(s) URL" }, 400, withCorsHeaders());
+      if (!payload || typeof payload.url !== "string" || !isValidHttpUrl(payload.url)) {
+        return jsonResponse({ error: "url must be a valid http(s) URL" }, 400);
       }
 
-      const code = makeUniqueCode();
-      const record = {
-        code,
-        url: body.url,
-        shortUrl: `${BASE_URL}/${code}`,
+      const link = {
+        code: generateUniqueCode(),
+        url: payload.url,
         hits: 0,
         createdAt: new Date().toISOString(),
       };
 
-      links.set(code, record);
-      return jsonResponse(toPayload(record), 201, withCorsHeaders());
+      store.set(link.code, link);
+      return jsonResponse(buildLinkResponse(link), 201);
     }
 
-    if (method === "GET" && url.pathname === "/api/links") {
-      const all = Array.from(links.values()).map(toPayload);
-      return jsonResponse(all, 200, withCorsHeaders());
+    if (pathname === "/api/links" && request.method === "GET") {
+      const links = Array.from(store.values()).map(buildLinkResponse);
+      return jsonResponse(links, 200);
     }
 
-    const staticPath = safePathFromUrlPathname(url.pathname);
-    if (method === "GET" && staticPath) {
-      const file = Bun.file(staticPath);
-      return new Response(file, {
-        status: 200,
-        headers: withCorsHeaders({ "content-type": contentTypeFor(staticPath) }),
-      });
+    if (PUBLIC_DIR && request.method === "GET") {
+      const staticResponse = await serveStaticIfExists(pathname);
+      if (staticResponse) {
+        return staticResponse;
+      }
     }
 
-    if (method === "GET" && url.pathname.length > 1) {
-      const code = url.pathname.slice(1);
-      const record = links.get(code);
+    if (request.method === "GET" && pathname.length > 1) {
+      const code = pathname.slice(1);
+      const link = store.get(code);
 
-      if (!record) {
-        return jsonResponse({ error: "Not found" }, 404, withCorsHeaders());
+      if (!link) {
+        return new Response("Not Found", {
+          status: 404,
+          headers: corsHeaders(),
+        });
       }
 
-      record.hits += 1;
+      link.hits += 1;
       return new Response(null, {
         status: 302,
-        headers: withCorsHeaders({ location: record.url }),
+        headers: {
+          Location: link.url,
+          ...corsHeaders(),
+        },
       });
     }
 
-    return jsonResponse({ error: "Not found" }, 404, withCorsHeaders());
+    return new Response("Not Found", {
+      status: 404,
+      headers: corsHeaders(),
+    });
   },
 });
 
-console.log(`Snip backend listening on ${BASE_URL} (port ${PORT})`);
+console.log(`Snip backend running on ${server.url}`);

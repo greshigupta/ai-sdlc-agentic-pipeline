@@ -1,6 +1,6 @@
 # snip-backend
 
-Tiny Bun URL shortener backend with no npm dependencies.
+Tiny URL shortener backend implemented as a single-file Bun server with zero npm dependencies.
 
 ## Run
 
@@ -8,32 +8,28 @@ Tiny Bun URL shortener backend with no npm dependencies.
 bun run server.js
 ```
 
-or
+or:
 
 ```bash
 bun run start
 ```
 
+Environment variables:
+
+- `PORT` (default: `3000`)
+- `BASE_URL` (used to build `shortUrl` values)
+- `RAILWAY_PUBLIC_DOMAIN` (fallback for `BASE_URL` as `https://$RAILWAY_PUBLIC_DOMAIN`)
+- `PUBLIC_DIR` (optional static file directory)
+
 ## API
 
-- `POST /api/links` with JSON body `{ "url": "https://example.com" }`
-  - `201` returns `{ code, url, shortUrl, hits, createdAt }`
-  - `400` on invalid JSON or invalid/non-http(s) URL
+- `POST /api/links` with body `{ "url": "https://example.com" }`
+  - `201` with `{ code, url, shortUrl, hits, createdAt }`
+  - `400` for invalid JSON or invalid non-http(s) URL
 - `GET /api/links`
-  - `200` returns all links as an array
+  - `200` with array of links in the same shape
 - `GET /:code`
-  - `302` redirects to original URL and increments hits
+  - `302` redirects to original URL and increments `hits`
   - `404` for unknown code
 
-## Environment
-
-- `PORT` (default `3000`)
-- `BASE_URL` (used to build `shortUrl`)
-  - fallback: `https://$RAILWAY_PUBLIC_DOMAIN` when set
-  - fallback: `http://localhost:$PORT`
-- `PUBLIC_DIR` (optional): serve static files from folder; `"/" -> index.html`
-  - existing file path wins over same-named short code
-
-## CORS
-
-Open CORS is enabled for all routes with `OPTIONS` preflight support.
+If `PUBLIC_DIR` is set, static files are served and an existing static file path takes precedence over a short code.
