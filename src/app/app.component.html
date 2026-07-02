@@ -1,0 +1,72 @@
+<main class="container">
+  <h1>Snip</h1>
+  <p class="subtitle">Tiny URL shortener frontend</p>
+
+  <form class="shorten-form" (ngSubmit)="shortenUrl()">
+    <label for="url">URL</label>
+    <input
+      id="url"
+      name="url"
+      type="url"
+      placeholder="https://example.com"
+      [ngModel]="urlInput()"
+      (ngModelChange)="urlInput.set($event)"
+      [disabled]="submitting()"
+      required
+    />
+    <button type="submit" [disabled]="!canSubmit()">
+      {{ submitting() ? 'Shortening...' : 'Shorten' }}
+    </button>
+  </form>
+
+  @if (createdLink()) {
+    <p class="success">
+      Created:
+      <a [href]="createdLink()!.shortUrl" target="_blank" rel="noreferrer">
+        {{ createdLink()!.shortUrl }}
+      </a>
+    </p>
+  }
+
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+
+  <section class="list-section">
+    <div class="list-header">
+      <h2>All links</h2>
+      <button type="button" (click)="loadLinks()" [disabled]="loading()">
+        {{ loading() ? 'Loading...' : 'Refresh' }}
+      </button>
+    </div>
+
+    @if (links().length === 0 && !loading()) {
+      <p class="empty">No links yet.</p>
+    }
+
+    @if (links().length > 0) {
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Original URL</th>
+            <th>Hits</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (link of links(); track link.code) {
+            <tr>
+              <td>
+                <a [href]="link.shortUrl" target="_blank" rel="noreferrer">{{ link.code }}</a>
+              </td>
+              <td>
+                <a [href]="link.url" target="_blank" rel="noreferrer">{{ link.url }}</a>
+              </td>
+              <td>{{ link.hits }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+</main>

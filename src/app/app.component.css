@@ -1,0 +1,121 @@
+:host {
+	color: #1f2937;
+	display: block;
+	font-family: "Segoe UI", sans-serif;
+}
+
+.container {
+	margin: 0 auto;
+	max-width: 860px;
+	padding: 2rem 1rem;
+}
+
+h1 {
+	font-size: 2rem;
+	margin: 0;
+}
+
+.subtitle {
+	color: #6b7280;
+	margin: 0.5rem 0 1.5rem;
+}
+
+.shorten-form {
+	align-items: end;
+	display: grid;
+	gap: 0.75rem;
+	grid-template-columns: 1fr auto;
+	margin-bottom: 1rem;
+}
+
+label {
+	font-weight: 600;
+	grid-column: 1 / -1;
+}
+
+input {
+	border: 1px solid #cbd5e1;
+	border-radius: 8px;
+	font-size: 1rem;
+	padding: 0.65rem 0.75rem;
+}
+
+button {
+	background: #0f766e;
+	border: 0;
+	border-radius: 8px;
+	color: #ffffff;
+	cursor: pointer;
+	font-weight: 600;
+	padding: 0.65rem 1rem;
+}
+
+button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+.success {
+	color: #0f766e;
+	margin: 0.5rem 0;
+}
+
+.error {
+	color: #b91c1c;
+	margin: 0.5rem 0;
+}
+
+.list-section {
+	border-top: 1px solid #e5e7eb;
+	margin-top: 1.5rem;
+	padding-top: 1rem;
+}
+
+.list-header {
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 0.75rem;
+}
+
+h2 {
+	font-size: 1.15rem;
+	margin: 0;
+}
+
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+th,
+td {
+	border-bottom: 1px solid #e5e7eb;
+	padding: 0.6rem 0.35rem;
+	text-align: left;
+	vertical-align: top;
+}
+
+th {
+	font-size: 0.88rem;
+}
+
+td a {
+	color: #0f766e;
+	word-break: break-all;
+}
+
+.empty {
+	color: #6b7280;
+	margin: 0.5rem 0 0;
+}
+
+@media (max-width: 700px) {
+	.shorten-form {
+		grid-template-columns: 1fr;
+	}
+
+	button {
+		width: 100%;
+	}
+}
