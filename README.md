@@ -27,6 +27,7 @@ Layout:
 - backend/
 - frontend/
 - cli/
+- bundle/ (generated release output, tracks branch bundle)
 
 ## Clone instructions
 
@@ -76,3 +77,16 @@ git submodule update --remote cli
 git add backend frontend cli
 git commit -m "Bump submodule pointers"
 git push
+
+## Generated bundle branch
+
+The bundle submodule tracks a generated release branch intended for deployment output.
+Do not hand-edit files in that branch.
+
+Build and refresh bundle locally:
+
+node scripts/build-bundle.mjs
+
+Push generated bundle (HEAD:bundle) and main pointer updates:
+
+node scripts/build-bundle.mjs --push
