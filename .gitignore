@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.angular/
+
+# Caches
+.npm-cache/
+
+# Local git worktrees
+.worktrees/
+
+# OS files
+.DS_Store
